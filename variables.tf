@@ -14,7 +14,7 @@ variable "gcp_project" {
 
 variable "cluster_name" {
   description = "Name of the K8s cluster"
-  default = "k8sexample-cluster"
+  default = "jlinn-k8sexample-cluster"
 }
 
 variable "initial_node_count" {
