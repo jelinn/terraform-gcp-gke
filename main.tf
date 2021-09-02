@@ -1,35 +1,33 @@
-terraform {
-  required_version = ">= 0.11.0"
+resource "google_service_account" "default" {
+  account_id   = "service-account-id"
+  display_name = "Service Account"
 }
 
-provider "google" {
-  //Use the credentials file or environment variables
-  //https://www.terraform.io/docs/providers/google/provider_reference.html
-  //credentials = "${file("gcp-creds.json")}"
-  project     = var.gcp_project
-  region      = var.gcp_region
+resource "google_container_cluster" "primary" {
+  name     = "my-gke-cluster"
+  location = "us-central1"
+
+  # We can't create a cluster with no node pool defined, but we want to only use
+  # separately managed node pools. So we create the smallest possible default
+  # node pool and immediately delete it.
+  remove_default_node_pool = true
+  initial_node_count       = 1
 }
 
-resource "google_container_cluster" "k8sexample" {
-  name               = var.cluster_name
-  description        = "k8s demo cluster"
-  location           = var.gcp_zone
-  initial_node_count = var.initial_node_count
-  enable_legacy_abac = "true"
-
-  master_auth {
-    username = var.master_username
-    password = var.master_password
-  }
+resource "google_container_node_pool" "primary_preemptible_nodes" {
+  name       = "my-node-pool"
+  location   = "us-central1"
+  cluster    = google_container_cluster.primary.name
+  node_count = 1
 
   node_config {
-    machine_type = var.node_machine_type
-    disk_size_gb = var.node_disk_size
-    oauth_scopes = [
-      "https://www.googleapis.com/auth/compute",
-      "https://www.googleapis.com/auth/devstorage.read_only",
-      "https://www.googleapis.com/auth/logging.write",
-      "https://www.googleapis.com/auth/monitoring"
+    preemptible  = true
+    machine_type = "e2-medium"
+
+    # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
+    service_account = google_service_account.default.email
+    oauth_scopes    = [
+      "https://www.googleapis.com/auth/cloud-platform"
     ]
   }
 }
